@@ -29,18 +29,33 @@ if (!hasSingleInstanceLock) {
   app.quit();
 }
 
+function getAssetPath(...parts) {
+  return path.join(app.getAppPath(), "assets", ...parts);
+}
+
 function createTrayIcon() {
-  const svgIconPath = path.join(__dirname, "..", "assets", "icons", "tray-template.svg");
-  const svgImage = nativeImage.createFromPath(svgIconPath);
-  if (!svgImage.isEmpty()) {
-    const trayImage = svgImage.resize({ width: 18, height: 18 });
-    if (process.platform === "darwin") {
-      trayImage.setTemplateImage(true);
+  if (process.platform === "darwin") {
+    const templatePath = getAssetPath("icons", "tray-template.png");
+    const templateImage = nativeImage.createFromPath(templatePath);
+    if (!templateImage.isEmpty()) {
+      templateImage.setTemplateImage(true);
+      return templateImage;
     }
-    return trayImage;
+  } else if (process.platform === "win32") {
+    const icoPath = getAssetPath("icons", "app-icon.ico");
+    const icoImage = nativeImage.createFromPath(icoPath);
+    if (!icoImage.isEmpty()) {
+      return icoImage;
+    }
+  } else {
+    const pngPath = getAssetPath("icons", "tray-color.png");
+    const pngImage = nativeImage.createFromPath(pngPath);
+    if (!pngImage.isEmpty()) {
+      return pngImage;
+    }
   }
 
-  // Fallback if the SVG cannot be decoded on a specific runtime.
+  // Last-resort fallback if platform icon files are missing.
   const fallbackDataUrl =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAQElEQVR42mNgGAWjgP///58RGRkZ4w0kVQxE2YBhNBRiNQxA6EJggvQbkMrA2gKkYkQJQMkCqRiRAlA2QKpGJAAAwT4eA4wAzaQAAAABJRU5ErkJggg==";
   return nativeImage.createFromDataURL(fallbackDataUrl).resize({ width: 18, height: 18 });
@@ -329,6 +344,9 @@ if (hasSingleInstanceLock) {
     showSettingsWindow();
   });
   app.whenReady().then(bootstrap);
+  if (process.platform === "win32") {
+    app.setAppUserModelId("com.arvidberndtsson.charbychar");
+  }
 }
 
 app.on("before-quit", () => {

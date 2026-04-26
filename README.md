@@ -57,6 +57,56 @@ Generate/update packaging icons from SVG:
 npm run build:icons
 ```
 
+## Build Installer (macOS)
+
+Create shareable installer files:
+
+```bash
+npm run release:mac
+```
+
+This generates:
+
+- `dist/char-by-char-<version>-arm64.dmg`
+- `dist/char-by-char-<version>-arm64.zip`
+- `packaging/homebrew/Casks/char-by-char.rb` (with current SHA256)
+
+## Homebrew (Cask)
+
+Tap repo is:
+
+- `https://github.com/arvid-berndtsson/homebrew-tap`
+
+Install via:
+
+```bash
+brew install --cask arvid-berndtsson/tap/char-by-char
+```
+
+Or:
+
+```bash
+brew tap arvid-berndtsson/tap
+brew install --cask char-by-char
+```
+
+## Release Automation
+
+This repo includes GitHub Actions workflow:
+
+- `.github/workflows/release-macos.yml`
+
+When you push a tag like `v0.1.1`, it builds and uploads:
+
+- macOS `.dmg`
+- macOS `.zip`
+- generated Homebrew cask file
+- auto-sync of `Casks/char-by-char.rb` to `arvid-berndtsson/homebrew-tap`
+
+Required repository secret in `char-by-char`:
+
+- `HOMEBREW_TAP_PAT`: Personal access token with write access to `arvid-berndtsson/homebrew-tap`
+
 ## Notes
 
 - Manual launch only (no auto-start at login).

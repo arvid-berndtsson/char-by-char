@@ -2,12 +2,18 @@
   "name": "char-by-char",
   "version": "0.1.0",
   "description": "Tray app that types clipboard text character-by-character via global hotkeys.",
+  "author": "Arvid Berndtsson",
+  "license": "MIT",
   "type": "module",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "check": "node --check ./src/main.js && node --check ./src/preload.js && node --check ./src/settings.js && node --check ./src/clipboardTyper.js",
-    "build:icons": "node ./scripts/build-icons.mjs"
+    "build:icons": "node ./scripts/build-icons.mjs",
+    "package:mac": "electron-builder --mac dmg zip --arm64 --publish never",
+    "package:mac:dir": "electron-builder --mac dir --arm64 --publish never",
+    "release:mac": "bash ./scripts/release-mac.sh",
+    "brew:cask": "node ./scripts/generate-cask.mjs"
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.2",
@@ -16,7 +22,35 @@
   },
   "devDependencies": {
     "electron": "^35.2.0",
+    "electron-builder": "^24.13.3",
     "icon-gen": "^5.0.0",
     "sharp": "^0.33.5"
+  },
+  "build": {
+    "appId": "com.arvidberndtsson.charbychar",
+    "productName": "char-by-char",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icons/app-icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "assets/icons/app-icon.ico"
+    },
+    "linux": {
+      "icon": "assets/icons"
+    }
   }
 }
