@@ -1,9 +1,9 @@
 # char-by-char
 
-Types clipboard text one character at a time via a global hotkey.
+Tray app that types clipboard text one character at a time via a global hotkey.
 
-- macOS target: `Fn+V`
-- Cross-platform fallback: `Ctrl+Alt+V` (configurable)
+- macOS primary hotkey: `Fn+V`
+- Cross-platform fallback hotkey: configurable in Settings
 
 This is for terminals and remote tools that block normal paste.
 
@@ -14,52 +14,50 @@ cd /Users/arvid/Work/char-by-char
 npm install
 ```
 
-Optional global command:
-
-```bash
-npm link
-```
-
-This gives you `char-by-char` globally.
-
 ## Run
 
 ```bash
-npm start -- --delay-ms 20
-```
-
-Or if linked globally:
-
-```bash
-char-by-char --delay-ms 20
+npm start
 ```
 
 Then:
 1. Copy text (`Cmd+C` on macOS).
-2. Focus the target input.
-3. Press `Fn+V` (or fallback hotkey).
-4. It types one character at a time.
+2. The app runs in your tray/menu bar.
+3. Open `Settings...` from the tray menu to set:
+   - Typing speed (ms per character)
+   - Fallback hotkey (example: `CTRL+SHIFT+V`)
+4. Focus the target input and press `Fn+V` (or fallback hotkey).
 
 ## macOS Permissions
 
-Allow your terminal (or the final app) in:
+Allow the app in:
 
 - `System Settings -> Privacy & Security -> Input Monitoring`
 - `System Settings -> Privacy & Security -> Accessibility`
 
-## Options
+## Tray Menu
+
+- Start/Stop Typing Service
+- Type Clipboard Now
+- Settings...
+- Quit
+
+## Icon Assets
+
+- Tray icon SVG: `assets/icons/tray-template.svg`
+- App/settings icon SVG: `assets/icons/app-icon.svg`
+- Generated packaging icons:
+  - `assets/icons/app-icon.icns` (macOS)
+  - `assets/icons/app-icon.ico` (Windows)
+  - `assets/icons/app-icon.png` (1024x1024)
+
+Generate/update packaging icons from SVG:
 
 ```bash
-char-by-char --delay-ms 0
-char-by-char --delay-ms 50
-char-by-char --hotkey CTRL+SHIFT+V
-char-by-char --verbose
+npm run build:icons
 ```
 
-## Electron Path (Later)
+## Notes
 
-Core logic lives in:
-
-- `src/clipboardTyper.js`
-
-An Electron app can import that class from `main` and keep the same behavior while adding tray UI/autostart packaging.
+- Manual launch only (no auto-start at login).
+- Settings are persisted locally via `electron-store`.

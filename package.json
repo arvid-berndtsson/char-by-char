@@ -1,19 +1,22 @@
 {
   "name": "char-by-char",
   "version": "0.1.0",
-  "description": "Background utility that types clipboard text character-by-character via global hotkeys.",
+  "description": "Tray app that types clipboard text character-by-character via global hotkeys.",
   "type": "module",
   "main": "src/main.js",
-  "bin": {
-    "char-by-char": "./src/main.js"
-  },
   "scripts": {
-    "start": "node ./src/main.js",
-    "check": "node --check ./src/main.js && node --check ./src/clipboardTyper.js"
+    "start": "electron .",
+    "check": "node --check ./src/main.js && node --check ./src/preload.js && node --check ./src/settings.js && node --check ./src/clipboardTyper.js",
+    "build:icons": "node ./scripts/build-icons.mjs"
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.2",
     "clipboardy": "^4.0.0",
-    "node-global-key-listener": "^0.3.0"
+    "electron-store": "^10.1.0"
+  },
+  "devDependencies": {
+    "electron": "^35.2.0",
+    "icon-gen": "^5.0.0",
+    "sharp": "^0.33.5"
   }
 }

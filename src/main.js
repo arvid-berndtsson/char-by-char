@@ -1,74 +1,342 @@
-#!/usr/bin/env node
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, globalShortcut } from "electron";
+import Store from "electron-store";
+import { ClipboardTyper, sanitizeSettings } from "./clipboardTyper.js";
 
-import { ClipboardTyper } from "./clipboardTyper.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-function parseArgs(argv) {
-  const args = {
-    delayMs: 20,
-    hotkey: "CTRL+ALT+V",
+const SETTINGS_DEFAULTS = {
+  delayMs: 20,
+  fallbackHotkey: "CTRL+ALT+V"
+};
+
+const store = new Store({
+  name: "char-by-char-settings",
+  defaults: SETTINGS_DEFAULTS
+});
+
+let tray = null;
+let settingsWindow = null;
+let typer = null;
+let serviceRunning = false;
+let isQuitting = false;
+let activeAccelerators = [];
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+}
+
+function createTrayIcon() {
+  const svgIconPath = path.join(__dirname, "..", "assets", "icons", "tray-template.svg");
+  const svgImage = nativeImage.createFromPath(svgIconPath);
+  if (!svgImage.isEmpty()) {
+    const trayImage = svgImage.resize({ width: 18, height: 18 });
+    if (process.platform === "darwin") {
+      trayImage.setTemplateImage(true);
+    }
+    return trayImage;
+  }
+
+  // Fallback if the SVG cannot be decoded on a specific runtime.
+  const fallbackDataUrl =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAQElEQVR42mNgGAWjgP///58RGRkZ4w0kVQxE2YBhNBRiNQxA6EJggvQbkMrA2gKkYkQJQMkCqRiRAlA2QKpGJAAAwT4eA4wAzaQAAAABJRU5ErkJggg==";
+  return nativeImage.createFromDataURL(fallbackDataUrl).resize({ width: 18, height: 18 });
+}
+
+function getSettings() {
+  try {
+    return sanitizeSettings({
+      delayMs: store.get("delayMs", SETTINGS_DEFAULTS.delayMs),
+      fallbackHotkey: store.get("fallbackHotkey", SETTINGS_DEFAULTS.fallbackHotkey)
+    });
+  } catch {
+    store.set("delayMs", SETTINGS_DEFAULTS.delayMs);
+    store.set("fallbackHotkey", SETTINGS_DEFAULTS.fallbackHotkey);
+    return { ...SETTINGS_DEFAULTS };
+  }
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+  const settings = getSettings();
+  const menu = Menu.buildFromTemplate([
+    {
+      label: serviceRunning ? "Status: Running" : "Status: Stopped",
+      enabled: false
+    },
+    {
+      label: serviceRunning ? "Stop Typing Service" : "Start Typing Service",
+      click: () => {
+        if (serviceRunning) {
+          stopTypingService();
+        } else {
+          startTypingService();
+        }
+      }
+    },
+    { type: "separator" },
+    {
+      label: `Typing Speed: ${settings.delayMs} ms`,
+      enabled: false
+    },
+    {
+      label: `Fallback Hotkey: ${settings.fallbackHotkey}`,
+      enabled: false
+    },
+    {
+      label: "Type Clipboard Now",
+      click: () => {
+        if (typer) typer.triggerTyping();
+      }
+    },
+    {
+      label: "Settings...",
+      click: () => showSettingsWindow()
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(menu);
+  tray.setToolTip("char-by-char");
+}
+
+function applySettingsToService() {
+  if (!typer) return;
+  const settings = getSettings();
+  typer.updateConfig({
+    delayMs: settings.delayMs,
+    fallbackHotkey: settings.fallbackHotkey,
     verbose: false
+  });
+  if (serviceRunning) {
+    registerGlobalHotkeys();
+  }
+}
+
+function toAccelerator(hotkey) {
+  const alias = {
+    CTRL: "Control",
+    CONTROL: "Control",
+    ALT: "Alt",
+    OPTION: "Alt",
+    SHIFT: "Shift",
+    CMD: "Command",
+    COMMAND: "Command",
+    META: "Command",
+    SUPER: "Super"
   };
 
-  for (let i = 0; i < argv.length; i += 1) {
-    const token = argv[i];
-    if (token === "--delay-ms" && i + 1 < argv.length) {
-      args.delayMs = Number(argv[i + 1]);
-      i += 1;
-      continue;
-    }
-    if (token === "--hotkey" && i + 1 < argv.length) {
-      args.hotkey = argv[i + 1];
-      i += 1;
-      continue;
-    }
-    if (token === "--verbose") {
-      args.verbose = true;
-      continue;
-    }
-    if (token === "--help" || token === "-h") {
-      printHelp();
-      process.exit(0);
+  return String(hotkey || "")
+    .split("+")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => {
+      const upper = token.toUpperCase();
+      if (alias[upper]) return alias[upper];
+      if (upper.length === 1) return upper;
+      return token;
+    })
+    .join("+");
+}
+
+function unregisterGlobalHotkeys() {
+  for (const accelerator of activeAccelerators) {
+    globalShortcut.unregister(accelerator);
+  }
+  activeAccelerators = [];
+}
+
+function tryRegisterAccelerator(accelerator) {
+  if (!accelerator) return false;
+  if (activeAccelerators.includes(accelerator)) return true;
+  let ok = false;
+  try {
+    ok = globalShortcut.register(accelerator, () => {
+      if (typer) {
+        void typer.triggerTyping();
+      }
+    });
+  } catch {
+    ok = false;
+  }
+  if (ok) {
+    activeAccelerators.push(accelerator);
+  }
+  return ok;
+}
+
+function registerGlobalHotkeys() {
+  unregisterGlobalHotkeys();
+  const settings = getSettings();
+  const fallbackAccelerator = toAccelerator(settings.fallbackHotkey);
+  let registeredAny = false;
+
+  if (process.platform === "darwin") {
+    if (tryRegisterAccelerator("Fn+V")) {
+      registeredAny = true;
+    } else {
+      console.warn("Could not register Fn+V on this system.");
     }
   }
 
-  if (!Number.isFinite(args.delayMs) || args.delayMs < 0) {
-    throw new Error("--delay-ms must be a non-negative number.");
+  if (tryRegisterAccelerator(fallbackAccelerator)) {
+    registeredAny = true;
+  } else {
+    console.warn(`Could not register fallback hotkey: ${fallbackAccelerator}`);
   }
 
-  return args;
+  if (!registeredAny) {
+    throw new Error("No global hotkeys could be registered.");
+  }
 }
 
-function printHelp() {
-  console.log(`char-by-char
+function startTypingService() {
+  if (!typer) {
+    const settings = getSettings();
+    typer = new ClipboardTyper({
+      delayMs: settings.delayMs,
+      fallbackHotkey: settings.fallbackHotkey,
+      verbose: false,
+      logger: console
+    });
+  } else {
+    applySettingsToService();
+  }
 
-Usage:
-  char-by-char [--delay-ms 20] [--hotkey CTRL+ALT+V] [--verbose]
-
-Options:
-  --delay-ms <number>    Delay between typed characters (default: 20)
-  --hotkey <combo>       Fallback global hotkey (default: CTRL+ALT+V)
-  --verbose              Enable extra logs
-  -h, --help             Show this help
-`);
+  typer.start();
+  registerGlobalHotkeys();
+  serviceRunning = true;
+  updateTrayMenu();
 }
 
-function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const app = new ClipboardTyper({
-    delayMs: args.delayMs,
-    fallbackHotkey: args.hotkey,
-    verbose: args.verbose
+function stopTypingService() {
+  unregisterGlobalHotkeys();
+  if (typer) typer.stop();
+  serviceRunning = false;
+  updateTrayMenu();
+}
+
+function createSettingsWindow() {
+  if (settingsWindow) return settingsWindow;
+
+  settingsWindow = new BrowserWindow({
+    width: 420,
+    height: 340,
+    resizable: false,
+    maximizable: false,
+    minimizable: true,
+    show: false,
+    title: "char-by-char Settings",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
   });
 
-  app.start();
+  settingsWindow.loadFile(path.join(__dirname, "settings.html"));
+  settingsWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    settingsWindow.hide();
+  });
+  settingsWindow.on("closed", () => {
+    settingsWindow = null;
+  });
 
-  const shutdown = () => {
-    app.stop();
-    process.exit(0);
-  };
-
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  return settingsWindow;
 }
 
-main();
+function showSettingsWindow() {
+  const window = createSettingsWindow();
+  window.once("ready-to-show", () => {
+    window.show();
+    window.focus();
+  });
+  if (window.isVisible()) {
+    window.focus();
+    return;
+  }
+  window.show();
+  window.focus();
+}
+
+function registerIpcHandlers() {
+  ipcMain.handle("settings:get", () => {
+    const settings = getSettings();
+    return {
+      ...settings,
+      serviceRunning,
+      hotkeyDescription: typer ? typer.getHotkeyDescription() : ""
+    };
+  });
+
+  ipcMain.handle("settings:save", (_event, rawSettings) => {
+    const settings = sanitizeSettings(rawSettings);
+    store.set("delayMs", settings.delayMs);
+    store.set("fallbackHotkey", settings.fallbackHotkey);
+    applySettingsToService();
+    updateTrayMenu();
+    return {
+      ok: true,
+      settings,
+      hotkeyDescription: typer ? typer.getHotkeyDescription() : ""
+    };
+  });
+
+  ipcMain.handle("service:type-now", async () => {
+    if (typer) await typer.triggerTyping();
+    return { ok: true };
+  });
+
+  ipcMain.handle("service:toggle", () => {
+    if (serviceRunning) {
+      stopTypingService();
+    } else {
+      startTypingService();
+    }
+    return {
+      serviceRunning
+    };
+  });
+}
+
+function bootstrap() {
+  tray = new Tray(createTrayIcon());
+  tray.on("double-click", showSettingsWindow);
+
+  registerIpcHandlers();
+  startTypingService();
+  updateTrayMenu();
+
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.hide();
+  }
+}
+
+if (hasSingleInstanceLock) {
+  app.on("second-instance", () => {
+    showSettingsWindow();
+  });
+  app.whenReady().then(bootstrap);
+}
+
+app.on("before-quit", () => {
+  isQuitting = true;
+  unregisterGlobalHotkeys();
+  if (typer) typer.stop();
+});
+
+app.on("window-all-closed", () => {
+  // Tray app keeps running until user chooses Quit from the tray menu.
+});

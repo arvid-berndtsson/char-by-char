@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>char-by-char Settings</title>
+    <link rel="stylesheet" href="./settings.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <div class="heading">
+        <img class="logo" src="../assets/icons/app-icon.svg" alt="char-by-char app icon" />
+        <div>
+          <h1>char-by-char</h1>
+          <p class="subtitle">Tray app settings</p>
+        </div>
+      </div>
+
+      <form id="settings-form">
+        <label class="field">
+          <span>Typing speed (ms per character)</span>
+          <input
+            id="delayMs"
+            name="delayMs"
+            type="number"
+            min="0"
+            max="1000"
+            step="1"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Fallback hotkey</span>
+          <input
+            id="fallbackHotkey"
+            name="fallbackHotkey"
+            type="text"
+            placeholder="CTRL+ALT+V"
+            required
+          />
+        </label>
+
+        <p class="hint">
+          macOS primary hotkey is always <code>Fn+V</code>. Fallback works on all platforms.
+        </p>
+
+        <div class="buttons">
+          <button id="save-button" type="submit">Save</button>
+          <button id="toggle-service-button" type="button">Stop Service</button>
+          <button id="type-now-button" type="button">Type Clipboard Now</button>
+        </div>
+      </form>
+
+      <p id="status" class="status"></p>
+      <p id="hotkey-description" class="hotkey"></p>
+    </main>
+    <script type="module" src="./settings.js"></script>
+  </body>
+</html>
