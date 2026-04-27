@@ -2,38 +2,67 @@
 
 Tray app that types clipboard text one character at a time via a global hotkey.
 
-- macOS primary hotkey: `Fn+V`
-- Cross-platform fallback hotkey: configurable in Settings
-
 This is for terminals and remote tools that block normal paste.
 
-## Install
+## Install via Homebrew Tap (Recommended)
+
+`char-by-char` is published as a **Homebrew cask** in this tap:
+
+- `arvid-berndtsson/tap`
+
+You have two install options.
+
+### Option 1: Direct install from tap (single command)
 
 ```bash
-cd /Users/arvid/Work/char-by-char
-npm install
+brew install --cask arvid-berndtsson/tap/char-by-char
 ```
 
-## Run
+### Option 2: Add tap first, then install
 
 ```bash
-npm start
+brew tap arvid-berndtsson/tap
+brew install --cask char-by-char
 ```
 
-Then:
-1. Copy text (`Cmd+C` on macOS).
-2. The app runs in your tray/menu bar.
-3. Open `Settings...` from the tray menu to set:
-   - Typing speed (ms per character)
-   - Fallback hotkey (example: `CTRL+SHIFT+V`)
-4. Focus the target input and press `Fn+V` (or fallback hotkey).
+### Update
 
-## macOS Permissions
+```bash
+brew upgrade --cask arvid-berndtsson/tap/char-by-char
+```
 
-Allow the app in:
+### Uninstall
+
+```bash
+brew uninstall --cask char-by-char
+```
+
+## Install manually (DMG)
+
+1. Go to Releases: `https://github.com/arvid-berndtsson/char-by-char/releases`
+2. Download latest `char-by-char-<version>-arm64.dmg`
+3. Drag `char-by-char.app` to `Applications`
+4. Start `char-by-char` from `Applications`
+
+## First-time macOS permissions
+
+Allow `char-by-char` in:
 
 - `System Settings -> Privacy & Security -> Input Monitoring`
 - `System Settings -> Privacy & Security -> Accessibility`
+
+Without these permissions, global hotkeys/typing will not work.
+
+## Usage
+
+- Primary hotkey on macOS: `Fn+V`
+- Fallback hotkey: configurable in `Settings...` from tray/menu bar
+
+Flow:
+1. Copy text (`Cmd+C`)
+2. Focus target input (where paste may be blocked)
+3. Press `Fn+V`
+4. char-by-char types clipboard text one character at a time
 
 ## Tray Menu
 
@@ -42,70 +71,76 @@ Allow the app in:
 - Settings...
 - Quit
 
-## Icon Assets
+## For Maintainers
 
-- Tray icon SVG: `assets/icons/tray-template.svg`
-- App/settings icon SVG: `assets/icons/app-icon.svg`
-- Generated packaging icons:
-  - `assets/icons/app-icon.icns` (macOS)
-  - `assets/icons/app-icon.ico` (Windows)
-  - `assets/icons/app-icon.png` (1024x1024)
+### Local development
 
-Generate/update packaging icons from SVG:
+```bash
+npm install
+npm start
+```
+
+### Build icons
 
 ```bash
 npm run build:icons
 ```
 
-## Build Installer (macOS)
+Icon sources:
+- `assets/icons/tray-template.svg`
+- `assets/icons/app-icon.svg`
 
-Create shareable installer files:
+Generated icon assets:
+- `assets/icons/app-icon.icns` (macOS)
+- `assets/icons/app-icon.ico` (Windows)
+- `assets/icons/app-icon.png`
+- `assets/icons/tray-template.png`
+- `assets/icons/tray-template@2x.png`
+- `assets/icons/tray-color.png`
+
+### Build release artifacts (macOS)
+
+Single command:
 
 ```bash
 npm run release:mac
 ```
 
-This generates:
-
+Artifacts:
 - `dist/char-by-char-<version>-arm64.dmg`
 - `dist/char-by-char-<version>-arm64.zip`
-- `packaging/homebrew/Casks/char-by-char.rb` (with current SHA256)
+- `packaging/homebrew/Casks/char-by-char.rb` (updated version + sha256)
 
-## Homebrew (Cask)
+### Release automation (GitHub Actions)
 
-Tap repo is:
+Workflow:
+- `.github/workflows/release-macos.yml`
 
+When pushing a tag like `v0.1.1`, workflow:
+1. Builds macOS `.dmg` and `.zip`
+2. Creates/updates GitHub release
+3. Regenerates Homebrew cask
+4. Pushes cask update to `arvid-berndtsson/homebrew-tap`
+
+Required repository secret in `char-by-char`:
+- `HOMEBREW_TAP_PAT` (token with write access to `arvid-berndtsson/homebrew-tap`)
+
+### Homebrew tap repo
+
+Tap repo:
 - `https://github.com/arvid-berndtsson/homebrew-tap`
 
-Install via:
+### What users should run
+
+Use cask commands (not formula commands):
 
 ```bash
 brew install --cask arvid-berndtsson/tap/char-by-char
 ```
 
-Or:
-
-```bash
-brew tap arvid-berndtsson/tap
-brew install --cask char-by-char
-```
-
-## Release Automation
-
-This repo includes GitHub Actions workflow:
-
-- `.github/workflows/release-macos.yml`
-
-When you push a tag like `v0.1.1`, it builds and uploads:
-
-- macOS `.dmg`
-- macOS `.zip`
-- generated Homebrew cask file
-- auto-sync of `Casks/char-by-char.rb` to `arvid-berndtsson/homebrew-tap`
-
-Required repository secret in `char-by-char`:
-
-- `HOMEBREW_TAP_PAT`: Personal access token with write access to `arvid-berndtsson/homebrew-tap`
+Why:
+- This project ships a macOS app (`.app`/`.dmg`) via Homebrew Cask.
+- It is not a formula package for `brew install char-by-char` without `--cask`.
 
 ## Notes
 
