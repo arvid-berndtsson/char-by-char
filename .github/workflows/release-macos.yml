@@ -1,9 +1,10 @@
 name: release-macos
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types:
+      - published
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,6 +12,8 @@ permissions:
 jobs:
   build-and-release:
     runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
 
     steps:
       - name: Checkout
@@ -37,10 +40,21 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             dist/*.dmg
             dist/*.zip
             packaging/homebrew/Casks/char-by-char.rb
+
+      - name: Validate tap token
+        env:
+          HOMEBREW_TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_PAT" ]; then
+            echo "Missing secret HOMEBREW_TAP_PAT."
+            echo "Add a PAT with write access to arvid-berndtsson/homebrew-tap in this repository's secrets."
+            exit 1
+          fi
 
       - name: Checkout homebrew tap
         uses: actions/checkout@v4
@@ -61,5 +75,5 @@ jobs:
             exit 0
           fi
           git add Casks/char-by-char.rb
-          git commit -m "Update char-by-char cask for ${GITHUB_REF_NAME}"
+          git commit -m "Update char-by-char cask for ${RELEASE_TAG}"
           git push
