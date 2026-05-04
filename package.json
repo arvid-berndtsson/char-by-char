@@ -8,7 +8,8 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check ./src/main.js && node --check ./src/preload.js && node --check ./src/settings.js && node --check ./src/clipboardTyper.js",
+    "test": "node --test",
+    "check": "node --check ./src/main.js && node --check ./src/preload.js && node --check ./src/settings.js && node --check ./src/clipboardTyper.js && node --check ./src/shortcutConfig.js",
     "build:icons": "node ./scripts/build-icons.mjs",
     "package:mac": "electron-builder --mac dmg zip --arm64 --publish never",
     "package:mac:dir": "electron-builder --mac dir --arm64 --publish never",

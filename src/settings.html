@@ -26,15 +26,16 @@
             min="0"
             max="1000"
             step="1"
+            value="20"
             required
           />
         </label>
 
         <label class="field">
-          <span>Fallback hotkey</span>
+          <span>Hotkey</span>
           <input
-            id="fallbackHotkey"
-            name="fallbackHotkey"
+            id="hotkey"
+            name="hotkey"
             type="text"
             placeholder="CTRL+ALT+V"
             required
@@ -42,13 +43,11 @@
         </label>
 
         <p class="hint">
-          macOS primary hotkey is always <code>Fn+V</code>. Fallback works on all platforms.
+          Set your preferred global shortcut.
         </p>
 
         <div class="buttons">
           <button id="save-button" type="submit">Save</button>
-          <button id="toggle-service-button" type="button">Stop Service</button>
-          <button id="type-now-button" type="button">Type Clipboard Now</button>
         </div>
       </form>
 

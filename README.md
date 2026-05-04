@@ -55,13 +55,12 @@ Without these permissions, global hotkeys/typing will not work.
 
 ## Usage
 
-- Primary hotkey on macOS: `Fn+V`
-- Fallback hotkey: configurable in `Settings...` from tray/menu bar
+- Global hotkey: configurable in `Settings...` from tray/menu bar
 
 Flow:
 1. Copy text (`Cmd+C`)
 2. Focus target input (where paste may be blocked)
-3. Press `Fn+V`
+3. Press your configured hotkey (for example `CTRL+OPTION+V` on macOS)
 4. char-by-char types clipboard text one character at a time
 
 ## Tray Menu

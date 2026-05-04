@@ -3,13 +3,14 @@ import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, Menu, Tray, nativeImage, ipcMain, globalShortcut } from "electron";
 import Store from "electron-store";
 import { ClipboardTyper, sanitizeSettings } from "./clipboardTyper.js";
+import { formatHotkeyForDisplay, getRequestedAccelerators } from "./shortcutConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SETTINGS_DEFAULTS = {
   delayMs: 20,
-  fallbackHotkey: "CTRL+ALT+V"
+  hotkey: "CTRL+ALT+V"
 };
 
 const store = new Store({
@@ -65,11 +66,11 @@ function getSettings() {
   try {
     return sanitizeSettings({
       delayMs: store.get("delayMs", SETTINGS_DEFAULTS.delayMs),
-      fallbackHotkey: store.get("fallbackHotkey", SETTINGS_DEFAULTS.fallbackHotkey)
+      hotkey: store.get("hotkey", store.get("fallbackHotkey", SETTINGS_DEFAULTS.hotkey))
     });
   } catch {
     store.set("delayMs", SETTINGS_DEFAULTS.delayMs);
-    store.set("fallbackHotkey", SETTINGS_DEFAULTS.fallbackHotkey);
+    store.set("hotkey", SETTINGS_DEFAULTS.hotkey);
     return { ...SETTINGS_DEFAULTS };
   }
 }
@@ -98,7 +99,10 @@ function updateTrayMenu() {
       enabled: false
     },
     {
-      label: `Fallback Hotkey: ${settings.fallbackHotkey}`,
+      label: `Hotkey: ${formatHotkeyForDisplay({
+        platform: process.platform,
+        hotkey: settings.hotkey
+      })}`,
       enabled: false
     },
     {
@@ -130,38 +134,12 @@ function applySettingsToService() {
   const settings = getSettings();
   typer.updateConfig({
     delayMs: settings.delayMs,
-    fallbackHotkey: settings.fallbackHotkey,
+    hotkey: settings.hotkey,
     verbose: false
   });
   if (serviceRunning) {
     registerGlobalHotkeys();
   }
-}
-
-function toAccelerator(hotkey) {
-  const alias = {
-    CTRL: "Control",
-    CONTROL: "Control",
-    ALT: "Alt",
-    OPTION: "Alt",
-    SHIFT: "Shift",
-    CMD: "Command",
-    COMMAND: "Command",
-    META: "Command",
-    SUPER: "Super"
-  };
-
-  return String(hotkey || "")
-    .split("+")
-    .map((token) => token.trim())
-    .filter(Boolean)
-    .map((token) => {
-      const upper = token.toUpperCase();
-      if (alias[upper]) return alias[upper];
-      if (upper.length === 1) return upper;
-      return token;
-    })
-    .join("+");
 }
 
 function unregisterGlobalHotkeys() {
@@ -193,21 +171,18 @@ function tryRegisterAccelerator(accelerator) {
 function registerGlobalHotkeys() {
   unregisterGlobalHotkeys();
   const settings = getSettings();
-  const fallbackAccelerator = toAccelerator(settings.fallbackHotkey);
+  const accelerators = getRequestedAccelerators({
+    platform: process.platform,
+    hotkey: settings.hotkey
+  });
   let registeredAny = false;
 
-  if (process.platform === "darwin") {
-    if (tryRegisterAccelerator("Fn+V")) {
+  for (const accelerator of accelerators) {
+    if (tryRegisterAccelerator(accelerator)) {
       registeredAny = true;
-    } else {
-      console.warn("Could not register Fn+V on this system.");
+      continue;
     }
-  }
-
-  if (tryRegisterAccelerator(fallbackAccelerator)) {
-    registeredAny = true;
-  } else {
-    console.warn(`Could not register fallback hotkey: ${fallbackAccelerator}`);
+    console.warn(`Could not register hotkey: ${accelerator}`);
   }
 
   if (!registeredAny) {
@@ -220,7 +195,7 @@ function startTypingService() {
     const settings = getSettings();
     typer = new ClipboardTyper({
       delayMs: settings.delayMs,
-      fallbackHotkey: settings.fallbackHotkey,
+      hotkey: settings.hotkey,
       verbose: false,
       logger: console
     });
@@ -245,9 +220,9 @@ function createSettingsWindow() {
   if (settingsWindow) return settingsWindow;
 
   settingsWindow = new BrowserWindow({
-    width: 420,
-    height: 340,
-    resizable: false,
+    width: 460,
+    height: 420,
+    resizable: true,
     maximizable: false,
     minimizable: true,
     show: false,
@@ -291,6 +266,7 @@ function registerIpcHandlers() {
     const settings = getSettings();
     return {
       ...settings,
+      platform: process.platform,
       serviceRunning,
       hotkeyDescription: typer ? typer.getHotkeyDescription() : ""
     };
@@ -299,7 +275,8 @@ function registerIpcHandlers() {
   ipcMain.handle("settings:save", (_event, rawSettings) => {
     const settings = sanitizeSettings(rawSettings);
     store.set("delayMs", settings.delayMs);
-    store.set("fallbackHotkey", settings.fallbackHotkey);
+    store.set("hotkey", settings.hotkey);
+    store.set("fallbackHotkey", settings.hotkey);
     applySettingsToService();
     updateTrayMenu();
     return {

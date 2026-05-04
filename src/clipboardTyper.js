@@ -1,5 +1,6 @@
 import clipboard from "clipboardy";
 import { keyboard } from "@nut-tree-fork/nut-js";
+import { getHotkeyDescription } from "./shortcutConfig.js";
 
 const TRIGGER_COOLDOWN_MS = 300;
 
@@ -27,7 +28,7 @@ function validateDelayMs(delayMs) {
 function validateHotkey(hotkey) {
   const parsed = parseHotkey(hotkey);
   if (parsed.length < 2) {
-    throw new Error("fallbackHotkey must include at least two keys, e.g. CTRL+ALT+V.");
+    throw new Error("hotkey must include at least two keys, e.g. CTRL+ALT+V.");
   }
   return parsed;
 }
@@ -35,14 +36,14 @@ function validateHotkey(hotkey) {
 export class ClipboardTyper {
   constructor({
     delayMs = 20,
-    fallbackHotkey = "CTRL+ALT+V",
+    hotkey = "CTRL+ALT+V",
     verbose = false,
     logger = console
   } = {}) {
     validateDelayMs(delayMs);
     this.delayMs = delayMs;
-    this.fallbackHotkey = fallbackHotkey;
-    this.parsedFallbackHotkey = validateHotkey(fallbackHotkey);
+    this.hotkey = hotkey;
+    this.parsedHotkey = validateHotkey(hotkey);
     this.verbose = verbose;
     this.logger = logger;
     this.started = false;
@@ -59,27 +60,27 @@ export class ClipboardTyper {
     this.logger.log(this.getHotkeyDescription());
   }
 
-  updateConfig({ delayMs, fallbackHotkey, verbose }) {
+  updateConfig({ delayMs, hotkey, verbose }) {
     validateDelayMs(delayMs);
-    const parsedHotkey = validateHotkey(fallbackHotkey);
+    const parsedHotkey = validateHotkey(hotkey);
     this.delayMs = delayMs;
-    this.fallbackHotkey = fallbackHotkey;
-    this.parsedFallbackHotkey = parsedHotkey;
+    this.hotkey = hotkey;
+    this.parsedHotkey = parsedHotkey;
     this.verbose = Boolean(verbose);
     if (this.verbose) {
       this.logger.log(
-        `Updated settings: delayMs=${this.delayMs}, fallbackHotkey=${this.parsedFallbackHotkey.join("+")}`
+          "Updated settings: " +
+          `delayMs=${this.delayMs}, ` +
+          `hotkey=${this.parsedHotkey.join("+")}`
       );
     }
   }
 
   getHotkeyDescription() {
-    const hotkeyText = this.parsedFallbackHotkey.join("+");
-    if (process.platform === "darwin") {
-      return `Hotkey: Fn+V (fallback: ${hotkeyText})`;
-    } else {
-      return `Hotkey: ${hotkeyText}`;
-    }
+    return getHotkeyDescription({
+      platform: process.platform,
+      hotkey: this.hotkey
+    });
   }
 
   stop() {
@@ -119,11 +120,12 @@ export class ClipboardTyper {
 
 export function sanitizeSettings(input = {}) {
   const delayMs = Number(input.delayMs);
-  const fallbackHotkey = String(input.fallbackHotkey || "").trim().toUpperCase();
+  const rawHotkey = input.hotkey ?? input.fallbackHotkey ?? "";
+  const hotkey = String(rawHotkey).trim().toUpperCase();
   validateDelayMs(delayMs);
-  validateHotkey(fallbackHotkey);
+  validateHotkey(hotkey);
   return {
     delayMs,
-    fallbackHotkey
+    hotkey
   };
 }
