@@ -1,6 +1,6 @@
 cask "char-by-char" do
-  version "0.1.0"
-  sha256 "669e40ca31b0a47474a71db69b1ac65bc066adeb61ccb1fcce7241f6a6d8ea0b"
+  version "0.1.1"
+  sha256 "3a6a5898c039cf996ec8efcafc956871dbe7f0e8423fca397c37ec0fbef1c35d"
 
   url "https://github.com/arvid-berndtsson/char-by-char/releases/download/v#{version}/char-by-char-#{version}-arm64.dmg"
   name "char-by-char"

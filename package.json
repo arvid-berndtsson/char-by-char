@@ -1,6 +1,6 @@
 {
   "name": "char-by-char",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tray app that types clipboard text character-by-character via global hotkeys.",
   "author": "Arvid Berndtsson",
   "license": "MIT",
