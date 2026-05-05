@@ -76,3 +76,21 @@ jobs:
           git add Casks/char-by-char.rb
           git commit -m "Update char-by-char cask for ${RELEASE_TAG}"
           git push
+
+  verify-homebrew-install:
+    runs-on: macos-latest
+    needs: build-and-release
+    steps:
+      - name: Tap repository
+        run: |
+          brew untap arvid-berndtsson/tap || true
+          brew tap arvid-berndtsson/tap
+
+      - name: Install cask from tap
+        run: |
+          brew install --cask arvid-berndtsson/tap/char-by-char
+
+      - name: Verify installed app exists
+        run: |
+          test -d /Applications/char-by-char.app
+          ls -la /Applications/char-by-char.app
