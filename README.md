@@ -37,6 +37,20 @@ brew upgrade --cask arvid-berndtsson/tap/char-by-char
 brew uninstall --cask char-by-char
 ```
 
+## macOS security note (important)
+
+To distribute a macOS app without Gatekeeper warnings ("broken", "damaged", or "cannot be opened"), the app must be signed and notarized via the Apple Developer Program.
+
+- Apple Developer Program is paid (about SEK ~1,000/year).
+- Without signing/notarization, some users may need to manually bypass Gatekeeper.
+
+If macOS blocks launch, users can run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/char-by-char.app
+open /Applications/char-by-char.app
+```
+
 ## Install manually (DMG)
 
 1. Go to Releases: `https://github.com/arvid-berndtsson/char-by-char/releases`

@@ -39,6 +39,16 @@ const content = `cask "char-by-char" do
 
   auto_updates true
 
+  caveats <<~EOS
+    If macOS blocks launch, run:
+      xattr -dr com.apple.quarantine /Applications/char-by-char.app
+      open /Applications/char-by-char.app
+
+    Also allow char-by-char in:
+      System Settings -> Privacy & Security -> Input Monitoring
+      System Settings -> Privacy & Security -> Accessibility
+  EOS
+
   app "char-by-char.app"
 end
 `;
